@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Scan QR - Simulasi RVM</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f4f8;
+      text-align: center;
+      padding: 3em;
+    }
+    .container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      padding: 3em;
+      max-width: 400px;
+      margin: auto;
+    }
+    h1 {
+      margin-bottom: 1em;
+      color: #333;
+    }
+    button {
+      padding: 1em 2em;
+      font-size: 16px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 1em;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Scan QR Code</h1>
+    <p>Tekan tombol di bawah untuk memindai QR Code (simulasi)</p>
+    <button onclick="scanQR()" id="scanButton">🔍 Scan QR</button>
+    <p id="status" style="color: red; display: none;"></p>
+  </div>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const scanButton = document.getElementById('scanButton');
+
+    function showError(message) {
+      statusEl.style.display = 'block';
+      statusEl.style.color = 'red';
+      statusEl.textContent = message;
+    }
+
+    function showSuccess(message) {
+      statusEl.style.display = 'block';
+      statusEl.style.color = 'green';
+      statusEl.textContent = message;
+    }
+
+    async function scanQR() {
+      const userId = 'user123'; // Simulasi QR
+      scanButton.disabled = true;
+      
+      try {
+        showError('Menghubungkan ke server...');
+        
+        const response = await fetch('http://localhost:3000/api/user/scan', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ userId })
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+          localStorage.setItem("activeUser", userId);
+          showSuccess("✅ QR berhasil dipindai! Mengalihkan ke dashboard...");
+          setTimeout(() => {
+            window.location.href = 'dashboard.html';
+          }, 1000);
+        } else {
+          showError("❌ Gagal: " + data.message);
+          scanButton.disabled = false;
+        }
+      } catch (error) {
+        console.error('Error detail:', error);
+        showError("❌ Tidak dapat terhubung ke server. Pastikan server sudah berjalan di port 3000");
+        scanButton.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard RVM</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #eef2f7;
+      padding: 2em;
+    }
+
+    .dashboard {
+      background: white;
+      padding: 2em;
+      max-width: 700px;
+      margin: auto;
+      border-radius: 12px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    }
+
+    h1, h2 {
+      color: #333;
+    }
+
+    .status {
+      background: #f9f9f9;
+      padding: 1em;
+      border-left: 5px solid #007bff;
+      margin-bottom: 1.5em;
+      border-radius: 8px;
+    }
+
+    .btn {
+      padding: 0.7em 1.5em;
+      margin: 0.5em;
+      font-size: 16px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .btn:hover {
+      background: #218838;
+    }
+
+    .btn.disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .points {
+      font-size: 24px;
+      margin: 1em 0;
+    }
+
+    .divider {
+      margin: 2em 0;
+      border-bottom: 1px solid #ddd;
+    }
+    .logout-btn {
+      background: #dc3545;
+      margin-top: 2em;
+    }
+    .logout-btn:hover {
+      background: #c82333;
+    }
+
+    .voucher-info {
+      background: #fff3cd;
+      border: 1px solid #ffeeba;
+      border-radius: 8px;
+      padding: 1em;
+      margin: 1em 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .voucher-count {
+      font-size: 20px;
+      font-weight: bold;
+      color: #856404;
+    }
+
+    .voucher-icon {
+      font-size: 24px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1em;
+      margin: 1em 0;
+    }
+
+    .info-card {
+      background: #f8f9fa;
+      padding: 1em;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .info-card .value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #28a745;
+    }
+
+    .info-card .label {
+      color: #666;
+      margin-top: 0.5em;
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <h1>🏭 Reverse Vending Machine</h1>
+    
+    <div class="status" id="userInfo">
+      ID Pengguna: <em>Belum scan QR</em>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="value"><span id="point">0</span></div>
+        <div class="label">Total Poin</div>
+      </div>
+      <div class="info-card">
+        <div class="value"><span id="voucher-count">0</span></div>
+        <div class="label">Voucher</div>
+      </div>
+    </div>
+
+    <h2>Pilih Jenis Sampah</h2>
+    <button class="btn" onclick="addPoint(10, 'plastic')">🧴 Plastik (+10)</button>
+    <button class="btn" onclick="addPoint(5, 'paper')">📄 Kertas (+5)</button>
+    <button class="btn" onclick="addPoint(15, 'metal')">🧲 Logam (+15)</button>
+    <button class="btn" onclick="addPoint(20, 'glass')">🪟 Kaca (+20)</button>
+    <button class="btn" onclick="addPoint(30, 'organic')">🥬 Organik (+30)</button>
+    <button class="btn" onclick="addPoint(50, 'mantan')">👻 Mantan (+50)</button>
+
+    <div class="divider"></div>
+
+    <div class="voucher-info">
+      <div>
+        <div class="voucher-icon">🎫</div>
+        <div>Tukarkan 50 poin untuk 1 voucher</div>
+      </div>
+      <button class="btn disabled" id="voucherBtn" onclick="redeemVoucher()" disabled>🎁 Tukar Voucher</button>
+    </div>
+
+    <button class="btn logout-btn" onclick="logout()">🚪 Keluar</button>
+  </div>
+
+  <script>
+    let point = 0;
+    let vouchers = 0;
+    const userId = localStorage.getItem("activeUser");
+    const userInfo = document.getElementById("userInfo");
+
+    if (!userId) {
+      window.location.href = 'index.html';
+    } else {
+      userInfo.innerHTML = "ID Pengguna: <strong>" + userId + "</strong>";
+      fetch('http://localhost:3000/api/user/scan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ userId })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          point = data.user.points || 0;
+          vouchers = data.user.vouchers || 0;
+          updateUI();
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert("❌ Gagal memuat data pengguna");
+      });
+    }
+
+    function updateUI() {
+      document.getElementById("point").innerText = point;
+      document.getElementById("voucher-count").innerText = vouchers;
+      const voucherBtn = document.getElementById("voucherBtn");
+
+      if (point >= 50) {
+        voucherBtn.disabled = false;
+        voucherBtn.classList.remove("disabled");
+      } else {
+        voucherBtn.disabled = true;
+        voucherBtn.classList.add("disabled");
+      }
+    }
+
+    function addPoint(value, type) {
+      if (!userId) {
+        alert("❌ Harap scan QR terlebih dahulu!");
+        return window.location.href = 'index.html';
+      }
+
+      // Validasi input
+      const validTypes = ['plastic', 'paper', 'metal', 'glass', 'organic', 'mantan'];
+      if (!validTypes.includes(type)) {
+        alert("❌ Tipe sampah tidak valid!");
+        return;
+      }
+
+      const button = event.target;
+      button.disabled = true;
+      button.style.opacity = '0.7';
+
+      fetch("http://localhost:3000/api/user/collect", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ userId, type })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          point = data.total;
+          updateUI();
+          alert(`✅ Berhasil menambah ${data.pointsAdded} poin!`);
+        } else {
+          alert("❌ Gagal: " + data.message);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert("❌ Terjadi kesalahan saat menambah poin");
+      })
+      .finally(() => {
+        button.disabled = false;
+        button.style.opacity = '1';
+      });
+    }
+
+
+    function redeemVoucher() {
+      if (!userId) return window.location.href = 'index.html';
+      if (point < 50) return;
+
+      fetch("http://localhost:3000/api/user/redeem", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ userId })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          point = data.pointsLeft;
+          vouchers = data.vouchers;
+          updateUI();
+          showNotification('🎉 Voucher berhasil ditukar!');
+        } else {
+          alert("❌ Gagal: " + data.message);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert("❌ Terjadi kesalahan saat menukar voucher");
+      });
+    }
+  function logout() {
+    if (confirm("Apakah Anda yakin ingin keluar?")) {
+      localStorage.removeItem("activeUser");
+      window.location.href = 'index.html';
+    }
+  }
+</script>
+
+</body>
+</html>
+  <style>
+    .loading {
+      opacity: 0.7;
+      cursor: wait !important;
+    }
+    
+    #loadingStatus {
+      display: none;
+      color: #666;
+      font-style: italic;
+      margin: 1em 0;
+    }
+  </style>
+<script>
+  let ws;
+  
+  function connectWebSocket() {
+    ws = new WebSocket('ws://localhost:3000');
+    
+    ws.onopen = () => {
+      console.log('Terhubung ke server WebSocket');
+    };
+    
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      
+      if (data.type === 'points_update' && data.userId === userId) {
+        point = data.points;
+        updateUI();
+        showNotification(`✨ ${data.added} poin ditambahkan dari ${data.type}!`);
+      }
+      
+      if (data.type === 'voucher_update' && data.userId === userId) {
+        point = data.points;
+        updateUI();
+        showNotification('🎉 Voucher berhasil ditukar!');
+      }
+    };
+    
+    ws.onclose = () => {
+      console.log('Terputus dari server WebSocket');
+      setTimeout(connectWebSocket, 3000); // Reconnect setiap 3 detik
+    };
+  }
+
+  function showNotification(message) {
+    const notification = document.createElement('div');
+    notification.className = 'notification';
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.remove();
+    }, 3000);
+  }
+
+  // Tambahkan style untuk notifikasi
+  const style = document.createElement('style');
+  style.textContent = `
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #28a745;
+      color: white;
+      padding: 1em 2em;
+      border-radius: 8px;
+      animation: slideIn 0.5s ease-out;
+      z-index: 1000;
+    }
+    
+    @keyframes slideIn {
+      from { transform: translateX(100%); }
+      to { transform: translateX(0); }
+    }
+  `;
+  document.head.appendChild(style);
+
+  // Hubungkan ke WebSocket saat halaman dimuat
+  connectWebSocket();
+</script>
