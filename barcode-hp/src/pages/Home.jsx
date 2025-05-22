@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Html5Qrcode } from 'html5-qrcode'
+import QrReader from 'react-qr-reader-es6'
 import VoucherPopup from '../components/VoucherPopup'
 import '../styles/Home.css'
 
@@ -11,50 +11,30 @@ function Home() {
   const [showPopup, setShowPopup] = useState(false)
   const navigate = useNavigate()
 
-  useEffect(() => {
-    let html5QrCode
-
-    if (scanning) {
-      html5QrCode = new Html5Qrcode("reader")
-      html5QrCode.start(
-        { facingMode: "environment" },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 }
-        },
-        (decodedText) => {
-          handleScan(decodedText)
-          html5QrCode.stop()
-          setScanning(false)
-        },
-        (error) => {
-          console.error("QR Scan error:", error)
-        }
-      )
-    }
-
-    return () => {
-      if (html5QrCode) {
-        html5QrCode.stop().catch(err => console.error(err))
-      }
-    }
-  }, [scanning])
-
   const handleScan = async (result) => {
-    try {
-      const response = await fetch('http://localhost:3000/api/user/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: result })
-      })
-      const data = await response.json()
-      if (data.success) {
-        setPoints(data.user.points || 0)
-        setVouchers(data.user.vouchers || 0)
+    if (result) {
+      try {
+        const response = await fetch('http://localhost:3000/api/user/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: result })
+        })
+        const data = await response.json()
+        if (data.success) {
+          setPoints(data.user.points || 0)
+          setVouchers(data.user.vouchers || 0)
+        }
+        setScanning(false)
+      } catch (error) {
+        console.error('Scan error:', error)
       }
-    } catch (error) {
-      console.error('Scan error:', error)
     }
+  }
+
+  const handleError = (error) => {
+    console.error(error)
+    alert('Gagal mengakses kamera. Pastikan izin kamera diberikan')
+    setScanning(false)
   }
 
   const handleRedeemVoucher = () => {
@@ -90,7 +70,13 @@ function Home() {
 
       <div className="scan-section">
         {scanning ? (
-          <div id="reader"></div>
+          <QrReader
+            delay={300}
+            onError={handleError}
+            onScan={handleScan}
+            style={{ width: '100%' }}
+            facingMode="environment"
+          />
         ) : (
           <div className="scan-area">
             <p>Tekan tombol Scan QR untuk mulai</p>
