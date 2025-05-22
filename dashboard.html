@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Dashboard RVM</title>
+  <!-- Pindahkan script QR ke bagian head -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -120,6 +122,11 @@
   <div class="dashboard">
     <h1>🏭 Reverse Vending Machine</h1>
     
+    <div class="qr-section">
+      <h2>QR Code Anda</h2>
+      <div id="qrcode"></div>
+    </div>
+
     <div class="status" id="userInfo">
       ID Pengguna: <em>Belum scan QR</em>
     </div>
@@ -135,14 +142,22 @@
       </div>
     </div>
 
-    <h2>Pilih Jenis Sampah</h2>
-    <button class="btn" onclick="addPoint(10, 'plastic')">🧴 Plastik (+10)</button>
-    <button class="btn" onclick="addPoint(5, 'paper')">📄 Kertas (+5)</button>
-    <button class="btn" onclick="addPoint(15, 'metal')">🧲 Logam (+15)</button>
-    <button class="btn" onclick="addPoint(20, 'glass')">🪟 Kaca (+20)</button>
-    <button class="btn" onclick="addPoint(30, 'organic')">🥬 Organik (+30)</button>
-    <button class="btn" onclick="addPoint(50, 'mantan')">👻 Mantan (+50)</button>
-
+    <div class="trash-section">
+      <div class="trash-buttons">
+        <h2>Pilih Jenis Sampah</h2>
+        <button class="btn" onclick="addPoint(10, 'plastic')">🧴 Plastik (+10)</button>
+        <button class="btn" onclick="addPoint(5, 'paper')">📄 Kertas (+5)</button>
+        <button class="btn" onclick="addPoint(15, 'metal')">🧲 Logam (+15)</button>
+        <button class="btn" onclick="addPoint(20, 'glass')">🪟 Kaca (+20)</button>
+        <button class="btn" onclick="addPoint(30, 'organic')">🥬 Organik (+30)</button>
+        <button class="btn" onclick="addPoint(50, 'mantan')">👻 Mantan (+50)</button>
+      </div>
+      
+      <!-- <div class="qr-section">
+        <h2>QR Code Anda</h2>
+        <div id="qrcode"></div>
+      </div> -->
+    </div>
     <div class="divider"></div>
 
     <div class="voucher-info">
@@ -166,6 +181,19 @@
       window.location.href = 'index.html';
     } else {
       userInfo.innerHTML = "ID Pengguna: <strong>" + userId + "</strong>";
+      
+      // Pastikan elemen qrcode sudah ada sebelum generate
+      setTimeout(() => {
+        new QRCode(document.getElementById("qrcode"), {
+          text: userId,
+          width: 128,
+          height: 128,
+          colorDark: "#000000",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.H
+        });
+      }, 100);
+
       fetch('http://localhost:3000/api/user/scan', {
         method: 'POST',
         headers: {
@@ -230,14 +258,14 @@
         if (data.success) {
           point = data.total;
           updateUI();
-          alert(`✅ Berhasil menambah ${data.pointsAdded} poin!`);
+          showNotification(`✨ Berhasil menambah ${data.pointsAdded} poin!`);
         } else {
-          alert("❌ Gagal: " + data.message);
+          showNotification("❌ Gagal: " + data.message, "error");
         }
       })
       .catch(error => {
         console.error('Error:', error);
-        alert("❌ Terjadi kesalahan saat menambah poin");
+        showNotification("❌ Terjadi kesalahan saat menambah poin", "error");
       })
       .finally(() => {
         button.disabled = false;
@@ -265,12 +293,12 @@
           updateUI();
           showNotification('🎉 Voucher berhasil ditukar!');
         } else {
-          alert("❌ Gagal: " + data.message);
+          showNotification("❌ Gagal: " + data.message, "error");
         }
       })
       .catch(error => {
         console.error('Error:', error);
-        alert("❌ Terjadi kesalahan saat menukar voucher");
+        showNotification("❌ Terjadi kesalahan saat menukar voucher", "error");
       });
     }
   function logout() {
@@ -294,6 +322,121 @@
       color: #666;
       font-style: italic;
       margin: 1em 0;
+    }
+    
+    .trash-section {
+      display: grid;
+      grid-template-columns: 3fr 2fr; /* Ubah rasio grid */
+      gap: 2em;
+      align-items: start;
+      margin: 2em 0; /* Tambah margin */
+    }
+
+    .trash-buttons {
+      text-align: left;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr); /* 2 tombol per baris */
+      gap: 1em;
+    }
+
+    .trash-buttons h2 {
+      grid-column: 1 / -1; /* Judul mengambil seluruh lebar */
+    }
+
+    .trash-buttons .btn {
+      margin: 0; /* Hapus margin default */
+      width: 100%; /* Tombol mengambil seluruh lebar */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 3em;
+    }
+
+    .qr-section {
+      background: #f8f9fa;
+      padding: 2em;
+      border-radius: 8px;
+      text-align: center;
+      margin-bottom: 1.5em;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .qr-section h2 {
+      margin-top: 0;
+      margin-bottom: 1em;
+      font-size: 1.2em;
+    }
+
+    #qrcode {
+      margin: 0 auto;
+      padding: 1em;
+      background: white;
+      border-radius: 8px;
+      width: fit-content;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    /* Hapus class trash-section yang lama karena QR sudah dipindah */
+    .trash-section {
+      margin: 2em 0;
+    }
+
+    .trash-buttons {
+      text-align: left;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1em;
+    }
+
+    .trash-buttons h2 {
+      grid-column: 1 / -1; /* Judul mengambil seluruh lebar */
+    }
+
+    .trash-buttons .btn {
+      margin: 0; /* Hapus margin default */
+      width: 100%; /* Tombol mengambil seluruh lebar */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 3em;
+    }
+
+    .qr-section {
+      background: #f8f9fa;
+      padding: 2em;
+      border-radius: 8px;
+      text-align: center;
+      height: fit-content;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .qr-section h2 {
+      margin-top: 0;
+      margin-bottom: 1em;
+      font-size: 1.2em;
+    }
+
+    #qrcode {
+      margin: 0 auto;
+      padding: 1em;
+      background: white;
+      border-radius: 8px;
+      width: fit-content;
+    }
+
+    @media (max-width: 768px) {
+      .trash-section {
+        grid-template-columns: 1fr;
+      }
+      
+      .trash-buttons {
+        grid-template-columns: 1fr; /* 1 tombol per baris di mobile */
+      }
+      
+      .qr-section {
+        order: -1;
+        margin-bottom: 2em;
+      }
     }
   </style>
 <script>
@@ -339,24 +482,37 @@
     }, 3000);
   }
 
-  // Tambahkan style untuk notifikasi
+  // Update style untuk notifikasi
   const style = document.createElement('style');
   style.textContent = `
     .notification {
       position: fixed;
       top: 20px;
       right: 20px;
-      background: #28a745;
-      color: white;
       padding: 1em 2em;
       border-radius: 8px;
       animation: slideIn 0.5s ease-out;
       z-index: 1000;
+      transition: opacity 0.5s ease-out;
+    }
+    
+    .notification.success {
+      background: #28a745;
+      color: white;
+    }
+    
+    .notification.error {
+      background: #dc3545;
+      color: white;
+    }
+    
+    .notification.fade-out {
+      opacity: 0;
     }
     
     @keyframes slideIn {
-      from { transform: translateX(100%); }
-      to { transform: translateX(0); }
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
     }
   `;
   document.head.appendChild(style);
@@ -364,3 +520,6 @@
   // Hubungkan ke WebSocket saat halaman dimuat
   connectWebSocket();
 </script>
+  <!-- Hapus script QR yang ada di bawah karena sudah dipindah ke head -->
+</body>
+</html>
