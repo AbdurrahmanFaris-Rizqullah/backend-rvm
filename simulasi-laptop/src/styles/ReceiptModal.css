@@ -1,0 +1,110 @@
+.receipt-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.receipt-modal {
+  background: white;
+  padding: 2em;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  width: 90%;
+  max-width: 400px;
+  animation: slideUp 0.3s ease-out;
+}
+
+.receipt-header {
+  text-align: center;
+  border-bottom: 2px dashed #ddd;
+  padding-bottom: 1em;
+  margin-bottom: 1em;
+}
+
+.receipt-header h2 {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.timestamp {
+  color: #666;
+  font-size: 0.9em;
+  margin: 0.5em 0 0;
+}
+
+.transaction-info {
+  margin: 1em 0;
+  padding: 0.5em;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.trash-details {
+  margin: 1.5em 0;
+}
+
+.trash-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5em;
+  background: #f1f8ff;
+  border-radius: 6px;
+  margin: 0.5em 0;
+}
+
+.points-summary {
+  margin: 1.5em 0;
+  padding: 1em;
+  background: #e8f5e9;
+  border-radius: 8px;
+}
+
+.total-points {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.points {
+  font-size: 1.5em;
+  font-weight: bold;
+  color: #28a745;
+}
+
+.balance {
+  margin-top: 0.5em;
+  text-align: right;
+  color: #666;
+}
+
+.receipt-footer {
+  text-align: center;
+  margin-top: 2em;
+  padding-top: 1em;
+  border-top: 2px dashed #ddd;
+}
+
+.receipt-footer small {
+  display: block;
+  color: #999;
+  margin-top: 0.5em;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
