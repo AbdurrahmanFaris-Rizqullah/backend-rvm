@@ -1,26 +1,7 @@
-const fs = require('fs');
-const path = require('path');
-const dataPath = path.join(__dirname, '../data/mockData.json');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
-// Inisialisasi data dari file JSON
-let users = {};
-try {
-  users = loadData();
-} catch (err) {
-  // Jika file belum ada, buat file baru dengan objek kosong
-  try {
-    // Pastikan direktori data ada
-    const dataDir = path.dirname(dataPath);
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
-    saveData(users);
-  } catch (error) {
-    console.error('Gagal membuat file data:', error);
-  }
-}
-
-exports.scanQR = (req, res) => {
+exports.scanQR = async (req, res) => {
   try {
     const { userId } = req.body;
     if (!userId) {
@@ -31,24 +12,28 @@ exports.scanQR = (req, res) => {
       });
     }
 
-    if (!users[userId]) {
-      users[userId] = { points: 0, vouchers: 0 };
-      try {
-        saveData(users);
-      } catch (error) {
-        console.error('Gagal menyimpan data user baru:', error);
-        return res.status(500).json({
-          success: false,
-          error: 'Internal server error',
-          message: 'Gagal menyimpan data pengguna'
-        });
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        points: true,
+        name: true,
+        email: true
       }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+        message: 'Pengguna tidak ditemukan'
+      });
     }
 
     res.json({ 
       success: true,
       message: 'Scan berhasil', 
-      user: users[userId] 
+      user: user
     });
   } catch (error) {
     console.error('Error pada scanQR:', error);
@@ -60,9 +45,9 @@ exports.scanQR = (req, res) => {
   }
 };
 
-exports.collectTrash = (req, res) => {
+exports.collectTrash = async (req, res) => {
   try {
-    const { userId, type } = req.body;
+    const { userId, type, quantity = 1 } = req.body;
     if (!userId || !type) {
       return res.status(400).json({ 
         success: false, 
@@ -71,49 +56,50 @@ exports.collectTrash = (req, res) => {
       });
     }
 
-    if (!users[userId]) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'User not found',
-        message: 'Pengguna tidak ditemukan' 
-      });
-    }
+    const trashType = await prisma.trashType.findUnique({
+      where: { name: type }
+    });
 
-    const pointMap = {
-      plastic: 10,
-      paper: 5,
-      metal: 15,
-      glass: 20,
-      organic: 30,
-      mantan: 50
-    };    
-
-    const points = pointMap[type] || 0;
-    users[userId].points += points;
-    
-    try {
-      saveData(users);
-      // Broadcast update points
-      global.broadcastUpdate('points_update', {
-        userId,
-        points: users[userId].points,
-        added: points,
-        type: type
-      });
-    } catch (error) {
-      console.error('Gagal menyimpan poin:', error);
-      return res.status(500).json({
+    if (!trashType) {
+      return res.status(404).json({
         success: false,
-        error: 'Internal server error',
-        message: 'Gagal menyimpan poin'
+        error: 'Trash type not found',
+        message: 'Tipe sampah tidak ditemukan'
       });
     }
+
+    const totalPoints = trashType.points * quantity;
+
+    const [transaction, updatedUser] = await prisma.$transaction([
+      prisma.transaction.create({
+        data: {
+          userId,
+          trashTypeId: trashType.id,
+          quantity,
+          points: totalPoints
+        }
+      }),
+      prisma.user.update({
+        where: { id: userId },
+        data: {
+          points: { increment: totalPoints }
+        }
+      })
+    ]);
+
+    // Broadcast update points
+    global.broadcastUpdate('points_update', {
+      userId,
+      points: updatedUser.points,
+      added: totalPoints,
+      type: type
+    });
 
     res.json({ 
       success: true,
       message: `Berhasil mengumpulkan ${type}`, 
-      pointsAdded: points, 
-      total: users[userId].points 
+      pointsAdded: totalPoints, 
+      total: updatedUser.points 
     });
   } catch (error) {
     console.error('Error pada collectTrash:', error);
@@ -125,10 +111,18 @@ exports.collectTrash = (req, res) => {
   }
 };
 
-exports.redeemVoucher = (req, res) => {
+exports.redeemVoucher = async (req, res) => {
   try {
     const { userId } = req.body;
-    if (!userId || !users[userId]) {
+    const POINTS_NEEDED = 50;
+    const DISCOUNT_PERCENT = 10;
+    const VALIDITY_DAYS = 30;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
       return res.status(404).json({
         success: false,
         error: 'User not found',
@@ -136,7 +130,7 @@ exports.redeemVoucher = (req, res) => {
       });
     }
 
-    if (users[userId].points < 50) {
+    if (user.points < POINTS_NEEDED) {
       return res.status(400).json({
         success: false,
         error: 'Insufficient points',
@@ -144,31 +138,38 @@ exports.redeemVoucher = (req, res) => {
       });
     }
 
-    users[userId].points -= 50;
-    users[userId].vouchers += 1;
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + VALIDITY_DAYS);
 
-    try {
-      saveData(users);
-      // Broadcast update voucher
-      global.broadcastUpdate('voucher_update', {
-        userId,
-        points: users[userId].points,
-        vouchers: users[userId].vouchers
-      });
-    } catch (error) {
-      console.error('Gagal menyimpan data voucher:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Internal server error',
-        message: 'Gagal menyimpan data voucher'
-      });
-    }
+    const [voucher, updatedUser] = await prisma.$transaction([
+      prisma.voucherRedemption.create({
+        data: {
+          userId,
+          points: POINTS_NEEDED,
+          discount: DISCOUNT_PERCENT,
+          expiresAt: expiryDate
+        }
+      }),
+      prisma.user.update({
+        where: { id: userId },
+        data: {
+          points: { decrement: POINTS_NEEDED }
+        }
+      })
+    ]);
+
+    // Broadcast update voucher
+    global.broadcastUpdate('voucher_update', {
+      userId,
+      points: updatedUser.points,
+      voucher: voucher
+    });
 
     res.json({
       success: true,
       message: 'Voucher berhasil ditukar',
-      vouchers: users[userId].vouchers,
-      pointsLeft: users[userId].points
+      voucher: voucher,
+      pointsLeft: updatedUser.points
     });
   } catch (error) {
     console.error('Error pada redeemVoucher:', error);
@@ -179,24 +180,3 @@ exports.redeemVoucher = (req, res) => {
     });
   }
 };
-
-// helper function untuk load dan simpan data
-function loadData() {
-  try {
-    const raw = fs.readFileSync(dataPath);
-    return JSON.parse(raw);
-  } catch (error) {
-    if (error.code === 'ENOENT') {
-      throw new Error('File data tidak ditemukan');
-    }
-    throw new Error('Gagal membaca file data: ' + error.message);
-  }
-}
-
-function saveData(data) {
-  try {
-    fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
-  } catch (error) {
-    throw new Error('Gagal menyimpan data: ' + error.message);
-  }
-}
