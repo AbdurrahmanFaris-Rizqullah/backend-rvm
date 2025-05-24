@@ -3,6 +3,8 @@ const cors = require('cors');
 const WebSocket = require('ws');
 const http = require('http');
 const userRoutes = require('./routes/userRoute');
+const loginRoutes = require('./routes/loginRoute');
+const cookieParser = require('cookie-parser');
 
 const app = express();
 const server = http.createServer(app);
@@ -10,7 +12,11 @@ const wss = new WebSocket.Server({ server });
 const PORT = 3000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  credentials: true,
+  origin: process.env.CLIENT_URL || 'http://localhost:5173' // sesuaikan dengan URL frontend
+}));
+app.use(cookieParser());
 app.use(express.json());
 
 // WebSocket connections
@@ -39,7 +45,8 @@ function broadcastUpdate(type, data) {
 global.broadcastUpdate = broadcastUpdate;
 
 // Routes
-app.use('/api/user', userRoutes);
+app.use('/api/auth', loginRoutes);
+app.use('/api', userRoutes);
 
 // Error handling
 app.use((err, req, res, next) => {

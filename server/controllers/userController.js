@@ -3,7 +3,7 @@ const prisma = new PrismaClient();
 
 exports.scanQR = async (req, res) => {
   try {
-    const { userId } = req.body;
+    const userId = req.user.userId; // Mengambil userId dari token
     if (!userId) {
       return res.status(400).json({ 
         success: false,
@@ -47,7 +47,9 @@ exports.scanQR = async (req, res) => {
 
 exports.collectTrash = async (req, res) => {
   try {
-    const { userId, type, quantity = 1 } = req.body;
+    const userId = req.user.userId; // Mengambil userId dari token
+    
+    const { type, quantity = 1 } = req.body;
     if (!userId || !type) {
       return res.status(400).json({ 
         success: false, 
@@ -113,8 +115,8 @@ exports.collectTrash = async (req, res) => {
 
 exports.redeemVoucher = async (req, res) => {
   try {
-    const { userId } = req.body;
-    const POINTS_NEEDED = 50;
+    const userId = req.user.userId; // Mengambil userId dari token
+    const POINTS_NEEDED = 100;
     const DISCOUNT_PERCENT = 10;
     const VALIDITY_DAYS = 30;
 
