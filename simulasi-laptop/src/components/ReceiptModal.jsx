@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import '../styles/ReceiptModal.css'
 
-function ReceiptModal({ transaction, onClose }) {
+function ReceiptModal({ transactions, totalPoints, onClose }) {
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose()
@@ -44,25 +44,28 @@ function ReceiptModal({ transaction, onClose }) {
 
         <div className="receipt-body">
           <div className="transaction-info">
-            <p>ID Transaksi: {transaction.id}</p>
-            <p>Status: ✅ Berhasil</p>
+            <p>Nama: Dila Faradila</p>
+            <p>ID: RVM123</p>
+            <p>Transaksi #{Math.floor(Math.random() * 1000)}</p>
           </div>
 
           <div className="trash-details">
             <h3>Detail Sampah:</h3>
-            <div className="trash-item">
-              <span>{getTrashEmoji(transaction.type)}</span>
-              <span>{transaction.type}</span>
-              <span>+{getPointValue(transaction.type)} poin</span>
-            </div>
+            {transactions.map(t => (
+              <div key={t.id} className="trash-item">
+                <span>{getTrashEmoji(t.type)}</span>
+                <span>{t.type} x{t.count}</span>
+                <span>+{t.pointsAdded} poin</span>
+              </div>
+            ))}
           </div>
 
           <div className="points-summary">
             <div className="total-points">
               <h3>Total Poin:</h3>
-              <p className="points">+{transaction.pointsAdded}</p>
+              <p className="points">+{transactions.reduce((sum, t) => sum + t.pointsAdded, 0)}</p>
             </div>
-            <p className="balance">Saldo Poin: {transaction.total}</p>
+            <p className="balance">Saldo Poin: {totalPoints}</p>
           </div>
         </div>
 

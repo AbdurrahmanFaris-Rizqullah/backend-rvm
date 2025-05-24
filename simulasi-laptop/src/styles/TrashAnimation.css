@@ -1,0 +1,42 @@
+.animation-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.trash-bin {
+  position: absolute;
+  bottom: 20%;
+  font-size: 5rem;
+  transform-origin: bottom center;
+  animation: binShake 0.5s ease-in-out infinite;
+}
+
+.falling-trash {
+  position: absolute;
+  top: -50px;
+  font-size: 2rem;
+  animation: fallDown 2s linear forwards;
+}
+
+@keyframes fallDown {
+  0% {
+    transform: translateY(0) rotate(0deg);
+  }
+  100% {
+    transform: translateY(60vh) rotate(360deg);
+  }
+}
+
+@keyframes binShake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-5deg); }
+  75% { transform: rotate(5deg); }
+}

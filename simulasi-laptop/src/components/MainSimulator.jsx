@@ -1,33 +1,39 @@
 import { useState } from 'react'
 import ReceiptModal from './ReceiptModal'
+import TrashAnimation from './TrashAnimation'
 import '../styles/MainSimulator.css'
 
 function MainSimulator() {
   const [showReceipt, setShowReceipt] = useState(false)
-  const [transaction, setTransaction] = useState(null)
+  const [showAnimation, setShowAnimation] = useState(false)
+  const [currentTrash, setCurrentTrash] = useState(null)
+  const [transactions, setTransactions] = useState([])
   const [points, setPoints] = useState(0)
   const [vouchers, setVouchers] = useState(0)
+  const [isTransacting, setIsTransacting] = useState(false)
 
   const handleTrashInput = async (type) => {
+    setIsTransacting(true)
+    const randomCount = Math.floor(Math.random() * 5) + 1
+    setCurrentTrash({ type, count: randomCount })
+    setShowAnimation(true)
+
     try {
       const response = await fetch('http://localhost:3000/api/user/collect', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: 'SIMULATOR', type })
       })
       
       const data = await response.json()
       if (data.success) {
         setPoints(data.total)
-        setTransaction({
+        setTransactions(prev => [...prev, {
           id: Date.now(),
           type,
-          pointsAdded: data.pointsAdded,
-          total: data.total
-        })
-        setShowReceipt(true)
+          count: randomCount,
+          pointsAdded: data.pointsAdded
+        }])
       }
     } catch (error) {
       console.error('Error:', error)
@@ -35,12 +41,24 @@ function MainSimulator() {
     }
   }
 
+  const handleFinishTransaction = () => {
+    setShowReceipt(true)
+    setIsTransacting(false)
+    setTransactions([])
+  }
+
+  const handleCancelTransaction = () => {
+    setTransactions([])
+    setIsTransacting(false)
+    // Reset points ke nilai sebelumnya (perlu implementasi)
+  }
+
   return (
     <div className="simulator-wrapper">
       <div className="simulator-container">
         <div className="machine-panel">
           <div className="machine-header">
-            <h2>🏭 RVM Simulator</h2>
+            <h2>🏭 Smart Eco-Rewards</h2>
             <div className="machine-status">Status: Siap Digunakan</div>
           </div>
 
@@ -106,12 +124,38 @@ function MainSimulator() {
               <span className="points-badge">+50</span>
             </button>
           </div>
+          
+          {isTransacting && (
+            <div className="transaction-controls">
+              <button 
+                className="finish-btn"
+                onClick={handleFinishTransaction}
+              >
+                ✅ Selesai
+              </button>
+              <button 
+                className="cancel-btn"
+                onClick={handleCancelTransaction}
+              >
+                ❌ Batal
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
+      {showAnimation && (
+        <TrashAnimation
+          type={currentTrash.type}
+          count={currentTrash.count}
+          onComplete={() => setShowAnimation(false)}
+        />
+      )}
+
       {showReceipt && (
         <ReceiptModal 
-          transaction={transaction}
+          transactions={transactions}
+          totalPoints={points}
           onClose={() => setShowReceipt(false)}
         />
       )}
