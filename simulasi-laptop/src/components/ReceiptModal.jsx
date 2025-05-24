@@ -13,11 +13,9 @@ function ReceiptModal({ transactions, totalPoints, onClose }) {
   const getPointValue = (type) => {
     const pointMap = {
       plastic: 10,
-      paper: 5,
-      metal: 15,
-      glass: 20,
-      organic: 30,
-      mantan: 50
+      paper: 8,
+      metal: 6,
+      glass: 4
     }
     return pointMap[type] || 0
   }
@@ -27,9 +25,7 @@ function ReceiptModal({ transactions, totalPoints, onClose }) {
       plastic: '🧴',
       paper: '📄',
       metal: '🧲',
-      glass: '🪟',
-      organic: '🥬',
-      mantan: '👻'
+      glass: '🪟'
     }
     return emojiMap[type] || '♻️'
   }

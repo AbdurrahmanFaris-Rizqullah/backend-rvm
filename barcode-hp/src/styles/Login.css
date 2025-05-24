@@ -62,3 +62,43 @@
   text-align: center;
   margin-top: 1rem;
 }
+
+.login-divider {
+  text-align: center;
+  color: #666;
+  margin: 1rem 0;
+  position: relative;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 45%;
+  height: 1px;
+  background: #ddd;
+}
+
+.login-divider::before {
+  left: 0;
+}
+
+.login-divider::after {
+  right: 0;
+}
+
+.login-register-link {
+  text-align: center;
+  margin-top: 1rem;
+  color: #666;
+}
+
+.login-register-link a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.login-register-link a:hover {
+  text-decoration: underline;
+}

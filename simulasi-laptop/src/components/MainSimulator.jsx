@@ -19,15 +19,19 @@ function MainSimulator() {
     setShowAnimation(true)
 
     try {
-      const response = await fetch('http://localhost:3000/api/user/collect', {
+      const response = await fetch('http://localhost:3000/api/collect', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: 'SIMULATOR', type })
+        headers: { 
+          'Content-Type': 'application/json',
+          'credentials': 'include'
+        },
+        body: JSON.stringify({ type, count: randomCount })
       })
       
       const data = await response.json()
       if (data.success) {
-        setPoints(data.total)
+        setPoints(data.points)
+        setVouchers(data.vouchers?.length || 0)
         setTransactions(prev => [...prev, {
           id: Date.now(),
           type,
@@ -101,27 +105,17 @@ function MainSimulator() {
             <button onClick={() => handleTrashInput('paper')} className="trash-btn paper">
               <span className="trash-icon">📄</span>
               <span className="trash-label">Kertas</span>
-              <span className="points-badge">+5</span>
+              <span className="points-badge">+8</span>
             </button>
             <button onClick={() => handleTrashInput('metal')} className="trash-btn metal">
               <span className="trash-icon">🧲</span>
               <span className="trash-label">Logam</span>
-              <span className="points-badge">+15</span>
+              <span className="points-badge">+6</span>
             </button>
             <button onClick={() => handleTrashInput('glass')} className="trash-btn glass">
               <span className="trash-icon">🪟</span>
               <span className="trash-label">Kaca</span>
-              <span className="points-badge">+20</span>
-            </button>
-            <button onClick={() => handleTrashInput('organic')} className="trash-btn organic">
-              <span className="trash-icon">🥬</span>
-              <span className="trash-label">Organik</span>
-              <span className="points-badge">+30</span>
-            </button>
-            <button onClick={() => handleTrashInput('mantan')} className="trash-btn mantan">
-              <span className="trash-icon">👻</span>
-              <span className="trash-label">Mantan</span>
-              <span className="points-badge">+50</span>
+              <span className="points-badge">+4</span>
             </button>
           </div>
           

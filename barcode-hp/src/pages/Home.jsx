@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import QrReader from 'react-qr-reader-es6'
 import VoucherPopup from '../components/VoucherPopup'
@@ -9,24 +9,60 @@ function Home() {
   const [vouchers, setVouchers] = useState(0)
   const [scanning, setScanning] = useState(false)
   const [showPopup, setShowPopup] = useState(false)
+  const [userData, setUserData] = useState(null)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const response = await fetch('http://localhost:3000/api/user/profile', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        const data = await response.json()
+        if (data.success) {
+          setUserData(data.user)
+          setPoints(data.user.points || 0)
+          setVouchers(data.user.vouchers || 0)
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error)
+        if (error.message.includes('401')) {
+          localStorage.removeItem('token')
+          navigate('/login')
+        }
+      }
+    }
+    fetchUserData()
+  }, [])
 
   const handleScan = async (result) => {
     if (result) {
       try {
+        const token = localStorage.getItem('token')
         const response = await fetch('http://localhost:3000/api/user/scan', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: result })
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ qrData: result })
         })
         const data = await response.json()
         if (data.success) {
-          setPoints(data.user.points || 0)
-          setVouchers(data.user.vouchers || 0)
+          setPoints(data.points)
+          setVouchers(data.vouchers)
         }
         setScanning(false)
       } catch (error) {
         console.error('Scan error:', error)
+        if (error.message.includes('401')) {
+          // Token tidak valid, redirect ke login
+          localStorage.removeItem('token')
+          navigate('/login')
+        }
       }
     }
   }
@@ -49,8 +85,8 @@ function Home() {
     <div className="home">
       <div className="profile-header">
         <div className="user-info">
-          <h2>Dila Faradila</h2>
-          <p>ID: RVM123</p>
+          <h2>{userData?.name || 'Loading...'}</h2>
+          <p>ID: {userData?.id || '...'}</p>
         </div>
         <button className="profile-button" onClick={() => navigate('/profile')}>
           👤

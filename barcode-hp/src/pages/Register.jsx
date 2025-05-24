@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import '../styles/Login.css'
 
-function Login() {
+function Register() {
   const [formData, setFormData] = useState({
+    name: '',
     email: '',
-    password: ''
+    password: '',
+    confirmPassword: ''
   })
   const [error, setError] = useState('')
   const navigate = useNavigate()
@@ -18,29 +20,40 @@ function Login() {
     }))
   }
 
-  const handleLogin = async (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault()
-    if (!formData.email || !formData.password) {
+    
+    // Validasi form
+    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
       setError('Harap isi semua field')
       return
     }
 
+    if (formData.password !== formData.confirmPassword) {
+      setError('Password tidak cocok')
+      return
+    }
+
     try {
-      const response = await fetch('http://localhost:3000/api/auth/login', {
+      const response = await fetch('http://localhost:3000/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password
+        })
       })
       
       const data = await response.json()
       if (data.success) {
-        localStorage.setItem('token', data.token)
-        navigate('/')
+        // Redirect ke login setelah registrasi berhasil
+        navigate('/login')
       } else {
-        setError(data.message || 'Email atau password salah')
+        setError(data.message || 'Gagal mendaftar')
       }
     } catch (error) {
-      console.error('Login error:', error)
+      console.error('Register error:', error)
       setError('Terjadi kesalahan, silakan coba lagi')
     }
   }
@@ -48,8 +61,16 @@ function Login() {
   return (
     <div className="login-page">
       <div className="login-container">
-        <h1 className="login-title">🏭 RVM Login</h1>
-        <form className="login-form" onSubmit={handleLogin}>
+        <h1 className="login-title">🏭 RVM Register</h1>
+        <form className="login-form" onSubmit={handleRegister}>
+          <input 
+            type="text"
+            name="name"
+            className="login-input"
+            value={formData.name}
+            onChange={handleChange}
+            placeholder="Nama Lengkap"
+          />
           <input 
             type="email"
             name="email"
@@ -66,19 +87,23 @@ function Login() {
             onChange={handleChange}
             placeholder="Password"
           />
+          <input 
+            type="password"
+            name="confirmPassword"
+            className="login-input"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            placeholder="Konfirmasi Password"
+          />
           <button 
             type="submit"
             className="login-button primary"
           >
-            Masuk
+            Daftar
           </button>
-          <p className="login-divider">atau</p>
-          
-          
-          
           {error && <p className="login-error">{error}</p>}
           <p className="login-register-link">
-            Belum punya akun? <Link to="/register">Daftar</Link>
+            Sudah punya akun? <Link to="/login">Masuk</Link>
           </p>
         </form>
       </div>
@@ -86,4 +111,4 @@ function Login() {
   )
 }
 
-export default Login
+export default Register
