@@ -9,11 +9,8 @@ function Profile() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const token = localStorage.getItem('token')
-        const response = await fetch('http://localhost:3000/api/user/profile', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+        const response = await fetch('http://localhost:3000/api/profile', {
+          credentials: 'include'
         })
         const data = await response.json()
         if (data.success) {
@@ -22,7 +19,6 @@ function Profile() {
       } catch (error) {
         console.error('Error fetching user data:', error)
         if (error.message.includes('401')) {
-          localStorage.removeItem('token')
           navigate('/login')
         }
       }
@@ -59,9 +55,16 @@ function Profile() {
           </div>
         </div>
 
-        <button className="logout-button" onClick={() => {
-          localStorage.removeItem('token')
-          navigate('/login')
+        <button className="logout-button" onClick={async () => {
+          try {
+            await fetch('http://localhost:3000/api/auth/logout', {
+              method: 'POST',
+              credentials: 'include'
+            });
+          } catch (error) {
+            console.error('Logout error:', error);
+          }
+          navigate('/login');
         }}>
           Keluar
         </button>

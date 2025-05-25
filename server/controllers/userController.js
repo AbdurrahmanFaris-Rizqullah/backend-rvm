@@ -182,3 +182,59 @@ exports.redeemVoucher = async (req, res) => {
     });
   }
 };
+
+exports.getProfile = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        points: true,
+        voucherRedemptions: {
+          where: {
+            isUsed: false,
+            expiresAt: {
+              gt: new Date()
+            }
+          },
+          select: {
+            id: true,
+            points: true,
+            discount: true,
+            expiresAt: true
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User tidak ditemukan'
+      });
+    }
+
+    // Format response
+    const formattedUser = {
+      ...user,
+      vouchers: user.voucherRedemptions.length // Menghitung jumlah voucher aktif
+    };
+    delete formattedUser.voucherRedemptions;
+
+    res.json({
+      success: true,
+      user: formattedUser
+    });
+
+  } catch (error) {
+    console.error('Error getting profile:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Terjadi kesalahan saat mengambil data profil'
+    });
+  }
+};

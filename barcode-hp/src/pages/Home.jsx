@@ -10,16 +10,15 @@ function Home() {
   const [scanning, setScanning] = useState(false)
   const [showPopup, setShowPopup] = useState(false)
   const [userData, setUserData] = useState(null)
+  const [hasPermission, setHasPermission] = useState(false)  // State untuk izin kamera
   const navigate = useNavigate()
 
+  // Effect untuk mengambil data user
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const token = localStorage.getItem('token')
-        const response = await fetch('http://localhost:3000/api/user/profile', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+        const response = await fetch('http://localhost:3000/api/profile', {
+          credentials: 'include'
         })
         const data = await response.json()
         if (data.success) {
@@ -30,7 +29,6 @@ function Home() {
       } catch (error) {
         console.error('Error fetching user data:', error)
         if (error.message.includes('401')) {
-          localStorage.removeItem('token')
           navigate('/login')
         }
       }
@@ -38,15 +36,40 @@ function Home() {
     fetchUserData()
   }, [])
 
+  // Effect untuk mengatur izin kamera
+  useEffect(() => {
+    if (scanning) {
+      if (
+        typeof navigator !== 'undefined' &&
+        navigator.mediaDevices &&
+        typeof navigator.mediaDevices.getUserMedia === 'function'
+      ) {
+        navigator.mediaDevices.getUserMedia({ video: true })
+          .then(() => setHasPermission(true))
+          .catch((err) => {
+            console.error('Camera permission error:', err)
+            alert('Mohon berikan izin akses kamera untuk menggunakan fitur scan QR')
+            setScanning(false)
+          })
+      } else {
+        console.warn('getUserMedia tidak didukung di browser ini.')
+        alert('Browser ini tidak mendukung akses kamera.')
+        setScanning(false)
+      }
+    } else {
+      setHasPermission(false)
+    }
+  }, [scanning])
+  
+
   const handleScan = async (result) => {
     if (result) {
       try {
-        const token = localStorage.getItem('token')
-        const response = await fetch('http://localhost:3000/api/user/scan', {
+        const response = await fetch('http://localhost:3000/api/scan', {
           method: 'POST',
+          credentials: 'include',
           headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({ qrData: result })
         })
@@ -59,8 +82,6 @@ function Home() {
       } catch (error) {
         console.error('Scan error:', error)
         if (error.message.includes('401')) {
-          // Token tidak valid, redirect ke login
-          localStorage.removeItem('token')
           navigate('/login')
         }
       }
@@ -71,6 +92,7 @@ function Home() {
     console.error(error)
     alert('Gagal mengakses kamera. Pastikan izin kamera diberikan')
     setScanning(false)
+    setHasPermission(false)
   }
 
   const handleRedeemVoucher = () => {
@@ -106,13 +128,22 @@ function Home() {
 
       <div className="scan-section">
         {scanning ? (
-          <QrReader
-            delay={300}
-            onError={handleError}
-            onScan={handleScan}
-            style={{ width: '100%' }}
-            facingMode="environment"
-          />
+          hasPermission ? (
+            <QrReader
+              delay={300}
+              onError={handleError}
+              onScan={handleScan}
+              style={{ width: '100%' }}
+              constraints={{
+                facingMode: 'environment',
+                aspectRatio: 1
+              }}
+            />
+          ) : (
+            <div className="scan-area">
+              <p>Meminta izin kamera...</p>
+            </div>
+          )
         ) : (
           <div className="scan-area">
             <p>Tekan tombol Scan QR untuk mulai</p>

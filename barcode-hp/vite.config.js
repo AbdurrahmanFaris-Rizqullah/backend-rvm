@@ -1,11 +1,13 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), basicSsl()],
   server: {
     host: '0.0.0.0',      // ini penting!
-    port: 5173            // bebas, asal konsisten
+    port: 5175,           // bebas, asal konsisten
+    https: false           // mengaktifkan HTTPS
   }
 })

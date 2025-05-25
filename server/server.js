@@ -14,7 +14,12 @@ const PORT = 3000;
 // Middleware
 app.use(cors({
   credentials: true,
-  origin: process.env.CLIENT_URL || 'http://localhost:5173' // sesuaikan dengan URL frontend
+  origin: [
+    'https://192.168.171.5:5175',
+    'https://localhost:5175',
+    'http://192.168.171.5:5175',
+    'http://localhost:5175'
+  ] // mendukung baik HTTP maupun HTTPS
 }));
 app.use(cookieParser());
 app.use(express.json());

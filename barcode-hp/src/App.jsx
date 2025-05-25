@@ -21,8 +21,8 @@ function App() {
 
 // Component untuk proteksi route
 function ProtectedRoute({ children }) {
-  const token = localStorage.getItem('token')
-  if (!token) return <Navigate to="/login" replace />
+  // Kita tidak perlu cek token di localStorage lagi
+  // karena cookies akan dikirim secara otomatis
   return children
 }
 
