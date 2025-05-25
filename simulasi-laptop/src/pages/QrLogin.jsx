@@ -7,7 +7,8 @@ function QrLogin() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    // Generate QR code dari server
+    let pollInterval;
+    
     const generateQR = async () => {
       try {
         const response = await fetch('http://localhost:3000/api/auth/generate-qr', {
@@ -16,26 +17,38 @@ function QrLogin() {
         const data = await response.json()
         if (data.success) {
           setQrCode(data.qrCode)
+          // Mulai polling setelah QR dibuat
+          pollInterval = setInterval(checkLoginStatus, 2000)
         }
       } catch (error) {
         console.error('Error generating QR:', error)
       }
     }
+
+    const checkLoginStatus = async () => {
+      if (!qrCode) return;
+      
+      try {
+        const response = await fetch(`http://localhost:3000/api/auth/check-login?qrCode=${qrCode}`, {
+          credentials: 'include'
+        });
+        const data = await response.json();
+        
+        if (data.success && data.isLoggedIn) {
+          clearInterval(pollInterval);
+          navigate('/simulator'); // Ini yang akan mengarahkan ke MainSimulator
+        }
+      } catch (error) {
+        console.error('Error checking login status:', error);
+      }
+    };
+
     generateQR()
 
-    // Setup WebSocket connection
-    const ws = new WebSocket('ws://localhost:3000')
-    
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data)
-      if (data.type === 'login' && data.data.qrCode === qrCode) {
-        // Redirect ke simulator
-        navigate('/simulator')
-      }
+    return () => {
+      if (pollInterval) clearInterval(pollInterval)
     }
-
-    return () => ws.close()
-  }, [qrCode, navigate])
+  }, [])
 
   return (
     <div className="qr-login">

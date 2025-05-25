@@ -170,8 +170,10 @@ exports.generateQR = async (req, res) => {
   try {
     const qrCode = 'LOGIN_' + Math.random().toString(36).substring(7);
     
-    // Simpan QR code (dalam praktik nyata, tambahkan expiry time)
-    activeQRCodes.set(qrCode, null);
+    // Simpan QR code ke Map global
+    global.activeQRCodes.set(qrCode, null);
+    console.log('QR Generated:', qrCode);
+    console.log('Active QR codes:', Array.from(global.activeQRCodes.keys()));
     
     res.json({
       success: true,
@@ -189,34 +191,46 @@ exports.generateQR = async (req, res) => {
 exports.verifyQR = async (req, res) => {
   try {
     const { qrCode } = req.body;
-    const userId = req.user.id; // dari middleware auth
+    const userId = req.user.userId;
 
-    if (!activeQRCodes.has(qrCode)) {
+    console.log('Verifying QR:', qrCode);
+    console.log('Active QR codes:', Array.from(global.activeQRCodes.keys()));
+
+    if (!qrCode || typeof qrCode !== 'string' || qrCode.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'QR code tidak boleh kosong'
+      });
+    }
+
+    if (!global.activeQRCodes.has(qrCode)) {
       return res.status(400).json({
         success: false,
         message: 'QR code tidak valid atau kadaluarsa'
       });
     }
 
-    // Update QR status dan broadcast ke web client
-    activeQRCodes.set(qrCode, userId);
-    
-    // Broadcast melalui WebSocket
-    global.broadcastUpdate('login', { qrCode, userId });
+    // Update QR code dengan userId
+    global.activeQRCodes.set(qrCode, userId);
 
     res.json({
       success: true,
       message: 'QR code berhasil diverifikasi'
     });
 
-    // Hapus QR setelah berhasil
-    setTimeout(() => activeQRCodes.delete(qrCode), 5000);
+    // Hapus QR code setelah 5 detik
+    setTimeout(() => {
+      global.activeQRCodes.delete(qrCode);
+      console.log('QR deleted:', qrCode);
+      console.log('Remaining QR codes:', Array.from(global.activeQRCodes.keys()));
+    }, 5000);
 
   } catch (error) {
     console.error('Error verifying QR:', error);
     res.status(500).json({
       success: false,
-      message: 'Gagal verifikasi QR code'
+      message: 'Gagal verifikasi QR code',
+      error: error.message
     });
   }
 };

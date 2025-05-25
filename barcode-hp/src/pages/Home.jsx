@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import QrReader from 'react-qr-reader-es6'
 import VoucherPopup from '../components/VoucherPopup'
 import '../styles/Home.css'
+import { Html5Qrcode } from 'html5-qrcode'
 
 function Home() {
   const [points, setPoints] = useState(0)
@@ -10,117 +10,161 @@ function Home() {
   const [scanning, setScanning] = useState(false)
   const [showPopup, setShowPopup] = useState(false)
   const [userData, setUserData] = useState(null)
-  const [hasPermission, setHasPermission] = useState(false)  // State untuk izin kamera
+  const [hasPermission, setHasPermission] = useState(false)
+  const [html5QrCode, setHtml5QrCode] = useState(null)
+  const [hasScanned, setHasScanned] = useState(false)
+  const [errorMessage, setErrorMessage] = useState(null)
+
+  const ref = useRef()
   const navigate = useNavigate()
 
-  // Effect untuk mengambil data user
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/profile', {
-          credentials: 'include'
+        const res = await fetch('http://localhost:3000/api/profile', {
+          credentials: 'include',
         })
-        const data = await response.json()
+        if (!res.ok) throw new Error(`Status ${res.status}`)
+        const data = await res.json()
         if (data.success) {
           setUserData(data.user)
           setPoints(data.user.points || 0)
           setVouchers(data.user.vouchers || 0)
-        }
-      } catch (error) {
-        console.error('Error fetching user data:', error)
-        if (error.message.includes('401')) {
-          navigate('/login')
-        }
+        } else throw new Error('Invalid server response')
+      } catch (err) {
+        console.error('Fetch error:', err)
+        if (err.message.includes('401')) navigate('/login')
       }
     }
     fetchUserData()
-  }, [])
+  }, [navigate])
 
-  // Effect untuk mengatur izin kamera
   useEffect(() => {
-    if (scanning) {
-      if (
-        typeof navigator !== 'undefined' &&
-        navigator.mediaDevices &&
-        typeof navigator.mediaDevices.getUserMedia === 'function'
-      ) {
-        navigator.mediaDevices.getUserMedia({ video: true })
-          .then(() => setHasPermission(true))
-          .catch((err) => {
-            console.error('Camera permission error:', err)
-            alert('Mohon berikan izin akses kamera untuk menggunakan fitur scan QR')
-            setScanning(false)
-          })
-      } else {
-        console.warn('getUserMedia tidak didukung di browser ini.')
-        alert('Browser ini tidak mendukung akses kamera.')
+    if (!scanning) {
+      setHasPermission(false)
+      return
+    }
+
+    const requestCamera = async () => {
+      try {
+        await navigator.mediaDevices.getUserMedia({ video: true })
+        setHasPermission(true)
+      } catch (err) {
+        console.error('Camera permission error:', err)
+        alert('Mohon berikan izin kamera')
         setScanning(false)
       }
+    }
+
+    if (navigator?.mediaDevices?.getUserMedia) {
+      requestCamera()
     } else {
-      setHasPermission(false)
+      alert('Browser ini tidak mendukung kamera')
+      setScanning(false)
     }
   }, [scanning])
-  
 
-  const handleScan = async (result) => {
-    if (result) {
-      try {
-        // Cek apakah QR code untuk login
-        if (result.startsWith('LOGIN_')) {
-          const response = await fetch('http://localhost:3000/api/auth/verify-qr', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify({ qrCode: result })
-          })
+  useEffect(() => {
+    let scanner
 
-          const data = await response.json()
-          if (data.success) {
-            alert('Login berhasil!')
-            setScanning(false)
-          }
-          return // Keluar dari fungsi setelah handle login QR
-        }
+    const startScanner = async () => {
+      if (scanning && hasPermission && ref.current) {
+        scanner = new Html5Qrcode(ref.current.id)
+        setHtml5QrCode(scanner)
 
-        // Handle QR sampah seperti biasa
-        const response = await fetch('http://localhost:3000/api/scan', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ qrData: result })
-        })
-        const data = await response.json()
-        if (data.success) {
-          setPoints(data.points)
-          setVouchers(data.vouchers)
+        try {
+          await scanner.start(
+            { facingMode: 'environment' },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            handleScan,
+            (err) => {
+              if (!err.toString().includes('NotFoundException')) {
+                console.warn('Scan gagal:', err)
+              }
+            }
+          )
+          setErrorMessage(null)
+        } catch (err) {
+          console.error('Start scanner error:', err)
+          setErrorMessage('Gagal memulai scanner: ' + err.message)
+          setScanning(false)
         }
-        setScanning(false)
-      } catch (error) {
-        console.error('Scan error:', error)
-        if (error.message.includes('401')) {
-          navigate('/login')
-        }
-        alert('Gagal memverifikasi QR code')
       }
     }
-  }
 
-  const handleError = (error) => {
-    console.error(error)
-    alert('Gagal mengakses kamera. Pastikan izin kamera diberikan')
-    setScanning(false)
-    setHasPermission(false)
+    startScanner()
+
+    return () => {
+      const stopAndClear = async () => {
+        try {
+          if (scanner) {
+            if (scanner.getState() === 2) { // 2 = SCANNING
+              await scanner.stop()
+            }
+            await scanner.clear()
+          }
+        } catch (err) {
+          console.error('Cleanup scanner error:', err)
+        }
+      }
+      stopAndClear()
+    }
+  }, [scanning, hasPermission])
+
+  const handleScan = async (decodedText) => {
+    if (hasScanned || !decodedText.startsWith('LOGIN_')) return
+    setHasScanned(true)
+
+    try {
+      const res = await fetch('http://localhost:3000/api/auth/verify-qr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ qrCode: decodedText }),
+      })
+
+      if (res.ok) {
+        await html5QrCode?.stop()
+        await html5QrCode?.clear()
+        setHtml5QrCode(null)
+        setScanning(false)
+        console.log('Login berhasil')
+      } else {
+        console.error('Login gagal')
+        alert('QR tidak valid atau sudah digunakan.')
+        setHasScanned(false)
+      }
+    } catch (err) {
+      console.error('QR Submit Error:', err)
+      alert('Terjadi kesalahan saat mengirim QR')
+      setHasScanned(false)
+    }
   }
 
   const handleRedeemVoucher = () => {
-    if (points >= 50) {
-      setPoints(points - 50)
+    if (points >= 100) {
+      setPoints(points - 100)
       setVouchers(vouchers + 1)
       setShowPopup(true)
+    }
+  }
+
+  const handleToggleScan = async () => {
+    if (scanning) {
+      try {
+        if (html5QrCode?.getState() === 2) {
+          await html5QrCode.stop()
+        }
+        await html5QrCode?.clear()
+      } catch (err) {
+        console.error('Stop error:', err)
+      }
+      setHtml5QrCode(null)
+      setScanning(false)
+      setHasScanned(false)
+    } else {
+      setHasScanned(false)
+      setScanning(true)
     }
   }
 
@@ -148,18 +192,12 @@ function Home() {
       </div>
 
       <div className="scan-section">
+        {errorMessage && (
+          <div style={{ color: 'red', marginBottom: '10px' }}>{errorMessage}</div>
+        )}
         {scanning ? (
           hasPermission ? (
-            <QrReader
-              delay={300}
-              onError={handleError}
-              onScan={handleScan}
-              style={{ width: '100%' }}
-              constraints={{
-                facingMode: 'environment',
-                aspectRatio: 1
-              }}
-            />
+            <div id="reader" ref={ref} style={{ width: 300, height: 300 }} />
           ) : (
             <div className="scan-area">
               <p>Meminta izin kamera...</p>
@@ -177,8 +215,8 @@ function Home() {
           <span className="voucher-icon">🎫</span>
           <span className="voucher-text">Tukarkan 100 poin untuk 1 voucher</span>
         </div>
-        <button 
-          className="redeem-button" 
+        <button
+          className="redeem-button"
           onClick={handleRedeemVoucher}
           disabled={points < 100}
         >
@@ -186,10 +224,7 @@ function Home() {
         </button>
       </div>
 
-      <button 
-        className="scan-button" 
-        onClick={() => setScanning(!scanning)}
-      >
+      <button className="scan-button" onClick={handleToggleScan}>
         {scanning ? '❌ Batal' : '📷 Scan QR'}
       </button>
 
