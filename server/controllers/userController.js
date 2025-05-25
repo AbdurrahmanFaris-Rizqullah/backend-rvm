@@ -113,12 +113,16 @@ exports.collectTrash = async (req, res) => {
 
 
 exports.redeemVoucher = async (req, res) => {
+  // console.log('👉 req.user:', req.user);
   try {
-    const userId = req.user.userId; // Mengambil userId dari token
+    // ✅ FIXED: ambil id user dari token
+    const userId = req.user.userId;
+
     const POINTS_NEEDED = 100;
     const DISCOUNT_PERCENT = 10;
     const VALIDITY_DAYS = 30;
 
+    // Cek user dari database
     const user = await prisma.user.findUnique({
       where: { id: userId }
     });
@@ -139,9 +143,11 @@ exports.redeemVoucher = async (req, res) => {
       });
     }
 
+    // Hitung masa berlaku voucher
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + VALIDITY_DAYS);
 
+    // Simpan ke database dalam transaksi
     const [voucher, updatedUser] = await prisma.$transaction([
       prisma.voucherRedemption.create({
         data: {
@@ -159,22 +165,26 @@ exports.redeemVoucher = async (req, res) => {
       })
     ]);
 
-    // Broadcast update voucher
-    global.broadcastUpdate('voucher_update', {
-      userId,
-      points: updatedUser.points,
-      voucher: voucher
-    });
+    // Broadcast jika ada (opsional)
+    if (global.broadcastUpdate) {
+      global.broadcastUpdate('voucher_update', {
+        userId,
+        points: updatedUser.points,
+        voucher
+      });
+    }
 
-    res.json({
+    // Kirim response sukses
+    return res.json({
       success: true,
       message: 'Voucher berhasil ditukar',
-      voucher: voucher,
+      voucher,
       pointsLeft: updatedUser.points
     });
+
   } catch (error) {
     console.error('Error pada redeemVoucher:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Internal server error',
       message: 'Terjadi kesalahan saat menukar voucher'

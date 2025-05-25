@@ -172,8 +172,8 @@ exports.generateQR = async (req, res) => {
     
     // Simpan QR code ke Map global
     global.activeQRCodes.set(qrCode, null);
-    console.log('QR Generated:', qrCode);
-    console.log('Active QR codes:', Array.from(global.activeQRCodes.keys()));
+    // console.log('QR Generated:', qrCode);
+    // console.log('Active QR codes:', Array.from(global.activeQRCodes.keys()));
     
     res.json({
       success: true,
@@ -193,8 +193,8 @@ exports.verifyQR = async (req, res) => {
     const { qrCode } = req.body;
     const userId = req.user.userId;
 
-    console.log('Verifying QR:', qrCode);
-    console.log('Active QR codes:', Array.from(global.activeQRCodes.keys()));
+    // console.log('Verifying QR:', qrCode);
+    // console.log('Active QR codes:', Array.from(global.activeQRCodes.keys()));
 
     if (!qrCode || typeof qrCode !== 'string' || qrCode.trim() === '') {
       return res.status(400).json({
@@ -221,8 +221,8 @@ exports.verifyQR = async (req, res) => {
     // Hapus QR code setelah 5 detik
     setTimeout(() => {
       global.activeQRCodes.delete(qrCode);
-      console.log('QR deleted:', qrCode);
-      console.log('Remaining QR codes:', Array.from(global.activeQRCodes.keys()));
+      // console.log('QR deleted:', qrCode);
+      // console.log('Remaining QR codes:', Array.from(global.activeQRCodes.keys()));
     }, 5000);
 
   } catch (error) {
