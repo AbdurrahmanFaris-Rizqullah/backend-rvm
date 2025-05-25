@@ -1,76 +1,186 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import '../styles/QrLogin.css'
+import ReceiptModal from './ReceiptModal'
+import TrashAnimation from './TrashAnimation'
+import '../styles/MainSimulator.css'
 
-function QrLogin() {
-  const [qrCode, setQrCode] = useState('')
-  const [pollIntervalId, setPollIntervalId] = useState(null)
-  const navigate = useNavigate()
+function MainSimulator() {
+  const [showReceipt, setShowReceipt] = useState(false)
+  const [showAnimation, setShowAnimation] = useState(false)
+  const [currentTrash, setCurrentTrash] = useState(null)
+  const [transactions, setTransactions] = useState([])
+  const [points, setPoints] = useState(0)
+  const [vouchers, setVouchers] = useState(0)
+  const [isTransacting, setIsTransacting] = useState(false)
+  const [userData, setUserData] = useState(null)
 
   useEffect(() => {
-    const generateQR = async () => {
+    const fetchUserData = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/auth/generate-qr', {
-          method: 'POST',
+        const response = await fetch('http://localhost:3000/api/user/profile', {
           credentials: 'include',
-        })
-        const data = await response.json()
-        if (data.success) {
-          setQrCode(data.qrCode)
-
-          // Mulai polling
-          const intervalId = setInterval(() => {
-            checkLoginStatus(data.qrCode)
-          }, 2000)
-
-          setPollIntervalId(intervalId)
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setUserData(data.user);
+          setPoints(data.user.points);
+          // Assuming vouchers data is included in user profile
+          setVouchers(data.user.vouchers?.length || 0);
+        } else {
+          console.error('Failed to fetch user data');
         }
       } catch (error) {
-        console.error('Error generating QR:', error)
+        console.error('Error fetching user data:', error);
       }
-    }
+    };
 
-    const checkLoginStatus = async (code) => {
-      try {
-        const response = await fetch(`http://localhost:3000/api/auth/check-login?qrCode=${code}`, {
-          credentials: 'include'
-        })
-        const data = await response.json()
+    fetchUserData();
+  }, []);
 
-        if (data.success && data.isLoggedIn) {
-          clearInterval(pollIntervalId)
-          navigate('/simulator')
-        }
-      } catch (error) {
-        console.error('Error checking login status:', error)
+  const handleTrashInput = async (type) => {
+    setIsTransacting(true)
+    const randomCount = Math.floor(Math.random() * 5) + 1
+    setCurrentTrash({ type, count: randomCount })
+    setShowAnimation(true)
+
+    try {
+      const response = await fetch('http://localhost:3000/api/collect', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'credentials': 'include'
+        },
+        body: JSON.stringify({ type, count: randomCount })
+      })
+      
+      const data = await response.json()
+      if (data.success) {
+        setPoints(data.points)
+        setVouchers(data.vouchers?.length || 0)
+        setTransactions(prev => [...prev, {
+          id: Date.now(),
+          type,
+          count: randomCount,
+          pointsAdded: data.pointsAdded
+        }])
       }
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Gagal memproses sampah')
     }
+  }
 
-    generateQR()
+  const handleFinishTransaction = () => {
+    setShowReceipt(true)
+    setIsTransacting(false)
+    setTransactions([])
+  }
 
-    return () => {
-      if (pollIntervalId) clearInterval(pollIntervalId)
-    }
-  }, [navigate, pollIntervalId])
+  const handleCancelTransaction = () => {
+    setTransactions([])
+    setIsTransacting(false)
+    // Reset points ke nilai sebelumnya (perlu implementasi)
+  }
 
   return (
-    <div className="qr-login">
-      <div className="qr-container">
-        <h1>🏭 Smart Eco-Rewards</h1>
-        <div className="qr-display">
-          {qrCode ? (
-            <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?data=${qrCode}&size=200x200`}
-              alt="Login QR Code"
-            />
-          ) : (
-            <p>Memuat QR Code...</p>
+    <div className="simulator-wrapper">
+      <div className="simulator-container">
+        <div className="machine-panel">
+          <div className="machine-header">
+            <h2>🏭 Smart Eco-Rewards</h2>
+            <div className="machine-status">Status: Siap Digunakan</div>
+          </div>
+
+          <div className="user-info-panel">
+            <div className="user-avatar">👤</div>
+            <div className="user-details">
+              <h3>{userData?.name || 'Loading...'}</h3>
+              <p className="user-id">ID: {userData?.id || 'Loading...'}</p>
+            </div>
+          </div>
+          
+          <div className="machine-display">
+            <div className="stats-grid">
+              <div className="points-display">
+                <span className="points-value">{points}</span>
+                <span className="points-label">Total Poin</span>
+              </div>
+              <div className="voucher-display">
+                <span className="voucher-value">{vouchers}</span>
+                <span className="voucher-label">Voucher</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="machine-screen">
+            <div className="screen-content">
+              <h3>Silakan Pilih Jenis Sampah</h3>
+              <p>Pastikan sampah sesuai dengan kategorinya</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="control-panel">
+          <div className="trash-buttons">
+            <button onClick={() => handleTrashInput('plastic')} className="trash-btn plastic">
+              <span className="trash-icon">🧴</span>
+              <span className="trash-label">Plastik</span>
+              <span className="points-badge">+10</span>
+            </button>
+            <button onClick={() => handleTrashInput('paper')} className="trash-btn paper">
+              <span className="trash-icon">📄</span>
+              <span className="trash-label">Kertas</span>
+              <span className="points-badge">+8</span>
+            </button>
+            <button onClick={() => handleTrashInput('metal')} className="trash-btn metal">
+              <span className="trash-icon">🧲</span>
+              <span className="trash-label">Logam</span>
+              <span className="points-badge">+6</span>
+            </button>
+            <button onClick={() => handleTrashInput('glass')} className="trash-btn glass">
+              <span className="trash-icon">🪟</span>
+              <span className="trash-label">Kaca</span>
+              <span className="points-badge">+4</span>
+            </button>
+          </div>
+          
+          {isTransacting && (
+            <div className="transaction-controls">
+              <button 
+                className="finish-btn"
+                onClick={handleFinishTransaction}
+              >
+                ✅ Selesai
+              </button>
+              <button 
+                className="cancel-btn"
+                onClick={handleCancelTransaction}
+              >
+                ❌ Batal
+              </button>
+            </div>
           )}
         </div>
-        <p>Scan QR code menggunakan aplikasi Smart Eco-Rewards di HP Anda</p>
       </div>
+
+      {showAnimation && (
+        <TrashAnimation
+          type={currentTrash.type}
+          count={currentTrash.count}
+          onComplete={() => setShowAnimation(false)}
+        />
+      )}
+
+      {showReceipt && (
+        <ReceiptModal 
+          transactions={transactions}
+          totalPoints={points}
+          onClose={() => setShowReceipt(false)}
+        />
+      )}
     </div>
   )
 }
 
-export default QrLogin
+export default MainSimulator;

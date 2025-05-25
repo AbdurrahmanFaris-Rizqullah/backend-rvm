@@ -234,3 +234,72 @@ exports.verifyQR = async (req, res) => {
     });
   }
 };
+
+exports.checkLogin = async (req, res) => {
+  try {
+    const { qrCode } = req.query;
+
+    if (!qrCode || typeof qrCode !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'QR code tidak valid'
+      });
+    }
+
+    // Ambil userId dari QR Code
+    const userId = global.activeQRCodes.get(qrCode);
+
+    if (!userId) {
+      return res.json({
+        success: true,
+        isLoggedIn: false
+      });
+    }
+
+    // Ambil data user dari database
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        points: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User tidak ditemukan'
+      });
+    }
+
+    // Kirim token dan data user sebagai respons login sukses
+    const token = jwt.sign(
+      { userId: user.id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      maxAge: 24 * 60 * 60 * 1000
+    });
+
+    return res.json({
+      success: true,
+      isLoggedIn: true,
+      user
+    });
+
+  } catch (error) {
+    console.error('Error pada checkLogin:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Gagal memeriksa status login',
+      error: error.message
+    });
+  }
+};

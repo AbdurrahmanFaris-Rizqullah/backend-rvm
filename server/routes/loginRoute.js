@@ -8,5 +8,7 @@ router.post('/login', loginController.login);
 router.post('/logout', loginController.logout);
 router.post('/generate-qr', loginController.generateQR);
 router.post('/verify-qr', authMiddleware.authenticateToken, loginController.verifyQR);
+router.get('/check-login', loginController.checkLogin);
+
 
 module.exports = router;

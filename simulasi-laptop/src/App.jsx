@@ -8,10 +8,8 @@ function App() {
     <Router>
       <div className="app">
         <Routes>
-          {/* QR Login sebagai halaman default */}
           <Route path="/" element={<Navigate to="/login" />} />
           <Route path="/login" element={<QrLogin />} />
-          {/* Simulator hanya bisa diakses setelah scan QR */}
           <Route path="/simulator" element={
             <ProtectedRoute>
               <MainSimulator />
@@ -24,7 +22,6 @@ function App() {
 }
 
 function ProtectedRoute({ children }) {
-  // Cek status login dari localStorage yang diset saat scan QR berhasil
   const isAuthenticated = localStorage.getItem('simulatorAuth')
   if (!isAuthenticated) {
     return <Navigate to="/login" />
