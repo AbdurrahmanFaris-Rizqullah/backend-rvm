@@ -11,32 +11,55 @@
   z-index: 1000;
 }
 
+.random-number {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: #fff;
+  color: #000;
+  font-size: 2rem;
+  font-weight: bold;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+
 .trash-bin {
   position: absolute;
-  bottom: 20%;
+  bottom: 25%;
+  left: 50%;
+  transform: translateX(-50%);
   font-size: 5rem;
-  transform-origin: bottom center;
-  animation: binShake 0.5s ease-in-out infinite;
+  z-index: 2;
 }
 
 .falling-trash {
   position: absolute;
-  top: -50px;
+  top: 10%;
+  transform: translateX(-50%);
   font-size: 2rem;
-  animation: fallDown 2s linear forwards;
+  animation: fallToTrash 1s linear forwards;
+  z-index: 1;
 }
 
-@keyframes fallDown {
+@keyframes fallToTrash {
   0% {
-    transform: translateY(0) rotate(0deg);
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+  80% {
+    transform: translateX(-50%) translateY(45vh) scale(0.8);
   }
   100% {
-    transform: translateY(60vh) rotate(360deg);
+    transform: translateX(-50%) translateY(50vh) scale(0.6);
+    opacity: 0;
   }
 }
 
-@keyframes binShake {
-  0%, 100% { transform: rotate(0deg); }
-  25% { transform: rotate(-5deg); }
-  75% { transform: rotate(5deg); }
+@keyframes binWait {
+  0%, 100% { transform: translateX(-50%) scale(1); }
+  50% { transform: translateX(-50%) scale(1.1); }
 }

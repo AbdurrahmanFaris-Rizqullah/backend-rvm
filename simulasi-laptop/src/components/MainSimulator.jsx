@@ -16,27 +16,27 @@ function MainSimulator() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/user/profile', {
+        const response = await fetch('http://localhost:3000/api/profile', {
+          method: 'GET',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          setUserData(data.user);
-          setPoints(data.user.points);
-          // Assuming vouchers data is included in user profile
-          setVouchers(data.user.vouchers?.length || 0);
+        })
+
+        const data = await response.json()
+        if (data.success) {
+          setUserData(data.user)
+          setPoints(data.user.points)
+          setVouchers(data.user.vouchers || 0)
         } else {
-          console.error('Failed to fetch user data');
+          console.error('Gagal mengambil data user')
         }
       } catch (error) {
-        console.error('Error fetching user data:', error);
+        console.error('Error fetching user data:', error)
       }
-    };
+    }
 
-    fetchUserData();
-  }, []);
+    fetchUserData()
+  }, [])
 
   const handleTrashInput = async (type) => {
     setIsTransacting(true)
@@ -47,27 +47,29 @@ function MainSimulator() {
     try {
       const response = await fetch('http://localhost:3000/api/collect', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'credentials': 'include'
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ type, count: randomCount })
+        body: JSON.stringify({ type, count: randomCount }) // 👈 perbaikan disini
       })
-      
+
       const data = await response.json()
       if (data.success) {
         setPoints(data.points)
-        setVouchers(data.vouchers?.length || 0)
+        setVouchers(data.vouchers)
         setTransactions(prev => [...prev, {
           id: Date.now(),
           type,
           count: randomCount,
           pointsAdded: data.pointsAdded
         }])
+      } else {
+        alert(data.message || 'Gagal memproses sampah')
       }
     } catch (error) {
       console.error('Error:', error)
-      alert('Gagal memproses sampah')
+      alert('Terjadi kesalahan saat mengirim data')
     }
   }
 
@@ -80,7 +82,6 @@ function MainSimulator() {
   const handleCancelTransaction = () => {
     setTransactions([])
     setIsTransacting(false)
-    // Reset points ke nilai sebelumnya (perlu implementasi)
   }
 
   return (
@@ -99,7 +100,7 @@ function MainSimulator() {
               <p className="user-id">ID: {userData?.id || 'Loading...'}</p>
             </div>
           </div>
-          
+
           <div className="machine-display">
             <div className="stats-grid">
               <div className="points-display">
@@ -144,19 +145,13 @@ function MainSimulator() {
               <span className="points-badge">+4</span>
             </button>
           </div>
-          
+
           {isTransacting && (
             <div className="transaction-controls">
-              <button 
-                className="finish-btn"
-                onClick={handleFinishTransaction}
-              >
+              <button className="finish-btn" onClick={handleFinishTransaction}>
                 ✅ Selesai
               </button>
-              <button 
-                className="cancel-btn"
-                onClick={handleCancelTransaction}
-              >
+              <button className="cancel-btn" onClick={handleCancelTransaction}>
                 ❌ Batal
               </button>
             </div>
@@ -173,7 +168,7 @@ function MainSimulator() {
       )}
 
       {showReceipt && (
-        <ReceiptModal 
+        <ReceiptModal
           transactions={transactions}
           totalPoints={points}
           onClose={() => setShowReceipt(false)}
@@ -183,4 +178,4 @@ function MainSimulator() {
   )
 }
 
-export default MainSimulator;
+export default MainSimulator

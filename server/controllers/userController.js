@@ -47,14 +47,13 @@ exports.scanQR = async (req, res) => {
 
 exports.collectTrash = async (req, res) => {
   try {
-    const userId = req.user.userId; // Mengambil userId dari token
-    
-    const { type, quantity = 1 } = req.body;
+    const userId = req.user.userId; // dari middleware autentikasi
+    const { type, count = 1 } = req.body;
+
     if (!userId || !type) {
       return res.status(400).json({ 
-        success: false, 
-        error: 'Missing required fields',
-        message: 'ID pengguna dan tipe sampah harus disertakan' 
+        success: false,
+        message: 'ID pengguna dan tipe sampah harus disertakan'
       });
     }
 
@@ -65,19 +64,18 @@ exports.collectTrash = async (req, res) => {
     if (!trashType) {
       return res.status(404).json({
         success: false,
-        error: 'Trash type not found',
         message: 'Tipe sampah tidak ditemukan'
       });
     }
 
-    const totalPoints = trashType.points * quantity;
+    const totalPoints = trashType.points * count;
 
     const [transaction, updatedUser] = await prisma.$transaction([
       prisma.transaction.create({
         data: {
           userId,
           trashTypeId: trashType.id,
-          quantity,
+          quantity: count,
           points: totalPoints
         }
       }),
@@ -85,33 +83,34 @@ exports.collectTrash = async (req, res) => {
         where: { id: userId },
         data: {
           points: { increment: totalPoints }
+        },
+        include: {
+          voucherRedemptions: {
+            where: {
+              isUsed: false,
+              expiresAt: { gt: new Date() }
+            }
+          }
         }
       })
     ]);
 
-    // Broadcast update points
-    global.broadcastUpdate('points_update', {
-      userId,
-      points: updatedUser.points,
-      added: totalPoints,
-      type: type
-    });
-
-    res.json({ 
+    return res.json({
       success: true,
-      message: `Berhasil mengumpulkan ${type}`, 
-      pointsAdded: totalPoints, 
-      total: updatedUser.points 
+      message: `Berhasil mengumpulkan ${type}`,
+      pointsAdded: totalPoints,
+      points: updatedUser.points,
+      vouchers: updatedUser.voucherRedemptions.length
     });
   } catch (error) {
     console.error('Error pada collectTrash:', error);
     res.status(500).json({
       success: false,
-      error: 'Internal server error',
       message: 'Terjadi kesalahan saat memproses pengumpulan sampah'
     });
   }
 };
+
 
 exports.redeemVoucher = async (req, res) => {
   try {
