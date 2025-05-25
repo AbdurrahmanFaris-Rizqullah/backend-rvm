@@ -65,6 +65,26 @@ function Home() {
   const handleScan = async (result) => {
     if (result) {
       try {
+        // Cek apakah QR code untuk login
+        if (result.startsWith('LOGIN_')) {
+          const response = await fetch('http://localhost:3000/api/auth/verify-qr', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ qrCode: result })
+          })
+
+          const data = await response.json()
+          if (data.success) {
+            alert('Login berhasil!')
+            setScanning(false)
+          }
+          return // Keluar dari fungsi setelah handle login QR
+        }
+
+        // Handle QR sampah seperti biasa
         const response = await fetch('http://localhost:3000/api/scan', {
           method: 'POST',
           credentials: 'include',
@@ -84,6 +104,7 @@ function Home() {
         if (error.message.includes('401')) {
           navigate('/login')
         }
+        alert('Gagal memverifikasi QR code')
       }
     }
   }
@@ -154,12 +175,12 @@ function Home() {
       <div className="voucher-section">
         <div className="voucher-info">
           <span className="voucher-icon">🎫</span>
-          <span className="voucher-text">Tukarkan 50 poin untuk 1 voucher</span>
+          <span className="voucher-text">Tukarkan 100 poin untuk 1 voucher</span>
         </div>
         <button 
           className="redeem-button" 
           onClick={handleRedeemVoucher}
-          disabled={points < 50}
+          disabled={points < 100}
         >
           Tukar
         </button>

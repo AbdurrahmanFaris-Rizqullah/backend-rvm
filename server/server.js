@@ -18,7 +18,9 @@ app.use(cors({
     'https://192.168.171.5:5175',
     'https://localhost:5175',
     'http://192.168.171.5:5175',
-    'http://localhost:5175'
+    'http://localhost:5175',
+    'http://localhost:5172',
+    'http://192.168.171.5:5175'
   ] // mendukung baik HTTP maupun HTTPS
 }));
 app.use(cookieParser());

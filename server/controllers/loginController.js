@@ -161,3 +161,62 @@ exports.logout = async (req, res) => {
     message: 'Logout berhasil'
   });
 };
+
+
+// Simpan QR codes yang aktif
+const activeQRCodes = new Map(); // Map untuk menyimpan {qrCode: userId}
+
+exports.generateQR = async (req, res) => {
+  try {
+    const qrCode = 'LOGIN_' + Math.random().toString(36).substring(7);
+    
+    // Simpan QR code (dalam praktik nyata, tambahkan expiry time)
+    activeQRCodes.set(qrCode, null);
+    
+    res.json({
+      success: true,
+      qrCode
+    });
+  } catch (error) {
+    console.error('Error generating QR:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Gagal generate QR code'
+    });
+  }
+};
+
+exports.verifyQR = async (req, res) => {
+  try {
+    const { qrCode } = req.body;
+    const userId = req.user.id; // dari middleware auth
+
+    if (!activeQRCodes.has(qrCode)) {
+      return res.status(400).json({
+        success: false,
+        message: 'QR code tidak valid atau kadaluarsa'
+      });
+    }
+
+    // Update QR status dan broadcast ke web client
+    activeQRCodes.set(qrCode, userId);
+    
+    // Broadcast melalui WebSocket
+    global.broadcastUpdate('login', { qrCode, userId });
+
+    res.json({
+      success: true,
+      message: 'QR code berhasil diverifikasi'
+    });
+
+    // Hapus QR setelah berhasil
+    setTimeout(() => activeQRCodes.delete(qrCode), 5000);
+
+  } catch (error) {
+    console.error('Error verifying QR:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Gagal verifikasi QR code'
+    });
+  }
+};
